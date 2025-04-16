@@ -4,116 +4,73 @@ import json
 from typing import Optional, Any, Dict
 from application_tools import ToolsClient
 
-def run_file_list(directory: str, pattern: str, include_dirs: bool, recursive: bool) -> Dict[str, Any]:
-    """Execute the file list operation using ToolsClient"""
+def get_current_time(format_string: str = "%Y-%m-%d %H:%M:%S", timezone: str = "UTC") -> Dict[str, Any]:
+    """Execute the time node operation using ToolsClient"""
     client = ToolsClient()
     result = client.run_node_sync(
-        class_path="autotask_core.nodes.file.FileListNode",
+        class_path="autotask_core.nodes.time.TimeNode",
         inputs={
-            "directory": directory,
-            "pattern": pattern,
-            "include_dirs": str(include_dirs).lower(),
-            "recursive": str(recursive).lower()
+            "format_string": format_string,
+            "timezone": timezone
         }
     )
     # Parse the result if it's a string
     if isinstance(result, str):
         result = json.loads(result)
-    
-    # Parse the files field if it's a string
-    if isinstance(result.get('files'), str):
-        try:
-            result['files'] = json.loads(result['files'])
-        except json.JSONDecodeError:
-            st.error("Failed to parse files data")
-            result['files'] = []
-    
     return result
 
 def main():
     """Main function for Streamlit UI"""
     # Configure page
     st.set_page_config(
-        page_title="File Browser Demo",
-        page_icon="📁",
+        page_title="Time Display Demo",
+        page_icon="⏰",
         layout="wide"
     )
 
     # Main UI
-    st.title("File Browser Demo 📁")
-    st.markdown("Browse and search files in your system")
+    st.title("Time Display Demo ⏰")
+    st.markdown("Display current time in different formats and timezones")
 
-    # Create search form
-    with st.form("file_browser_form"):
-        # Directory input
-        directory = st.text_input(
-            "Directory Path",
-            value="",
-            help="Enter the directory path to browse"
+    # Create time display form
+    with st.form("time_display_form"):
+        # Time format input
+        format_string = st.text_input(
+            "Time Format",
+            value="%Y-%m-%d %H:%M:%S",
+            help="Enter time format (e.g., %Y-%m-%d %H:%M:%S)"
         )
         
-        # File pattern input
-        pattern = st.text_input(
-            "File Pattern",
-            value="",
-            help="Enter file pattern (e.g., *.txt, *.py)"
+        # Timezone input
+        timezone = st.text_input(
+            "Timezone",
+            value="UTC",
+            help="Enter timezone (e.g., UTC, America/New_York, Asia/Shanghai)"
         )
         
-        # Include directories checkbox
-        include_dirs = st.checkbox(
-            "Include Directories",
-            value=True,
-            help="Include directories in the results"
-        )
-        
-        # Recursive search checkbox
-        recursive = st.checkbox(
-            "Recursive Search",
-            value=False,
-            help="Search in subdirectories"
-        )
-        
-        # Search button
-        if st.form_submit_button("List Files"):
-            with st.spinner("Scanning files..."):
-                try:
-                    # Execute file list operation
-                    result = run_file_list(directory, pattern, include_dirs, recursive)
+        # Get time button
+        if st.form_submit_button("Get Current Time"):
+            try:
+                # Execute time node operation
+                result = get_current_time(format_string, timezone)
+                
+                if result.get('success') == 'true':
+                    time_value = result.get('result', '')
                     
-                    if result.get('success') == 'true':  # Changed to string comparison
-                        files = result.get('files', [])
+                    # Display time in large format
+                    st.success("Current Time:")
+                    st.header(time_value)
+                    
+                    # Display additional info
+                    st.info(f"Format: {format_string}")
+                    st.info(f"Timezone: {timezone}")
+                else:
+                    st.error("Failed to get current time")
+                    if 'error' in result:
+                        st.error(f"Error: {result['error']}")
                         
-                        # Display results
-                        st.success(f"Found {len(files)} items")
-                        
-                        # Create a table of files
-                        if files:
-                            file_data = []
-                            for file in files:
-                                file_data.append({
-                                    "Name": file.get('name', ''),
-                                    "Path": file.get('path', ''),
-                                    "Type": "Directory" if file.get('is_dir', False) else "File",
-                                    "Size": f"{file.get('size', 0):,} bytes" if not file.get('is_dir', False) else "-"
-                                })
-                            
-                            st.dataframe(
-                                file_data,
-                                use_container_width=True,
-                                column_config={
-                                    "Name": st.column_config.TextColumn("Name", width="medium"),
-                                    "Path": st.column_config.TextColumn("Path", width="large"),
-                                    "Type": st.column_config.TextColumn("Type", width="small"),
-                                    "Size": st.column_config.TextColumn("Size", width="medium")
-                                }
-                            )
-                    else:
-                        st.error("Failed to list files")
-                        if 'error' in result:
-                            st.error(f"Error: {result['error']}")
-                            
-                except Exception as e:
-                    st.error(f"Operation failed: {str(e)}")
+            except Exception as e:
+                st.error(f"Operation failed: {str(e)}")
 
     # Add footer
     st.markdown("---")
