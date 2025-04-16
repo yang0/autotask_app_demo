@@ -54,16 +54,21 @@ def main():
                 # Execute time node operation
                 result = get_current_time(format_string, timezone)
                 
-                if result.get('success') == 'true':
-                    time_value = result.get('result', '')
-                    
+                if result.get('success'):
                     # Display time in large format
                     st.success("Current Time:")
-                    st.header(time_value)
+                    st.header(result.get('current_time', ''))
                     
-                    # Display additional info
-                    st.info(f"Format: {format_string}")
-                    st.info(f"Timezone: {timezone}")
+                    # Display additional time information
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.info("Time Details:")
+                        st.write(f"🌐 Timezone: {result.get('timezone', timezone)}")
+                        st.write(f"⚡ Timestamp: {result.get('timestamp', '')}")
+                    with col2:
+                        st.info("Format Settings:")
+                        st.write(f"📝 Format: {format_string}")
+                        st.write(f"🔄 ISO Format: {result.get('iso_format', '')}")
                 else:
                     st.error("Failed to get current time")
                     if 'error' in result:
